@@ -4,11 +4,23 @@ from future import standard_library
 
 standard_library.install_aliases()
 from future.utils import iteritems
-from typing import List, Dict, Any, Optional, NamedTuple, Tuple, Iterator, Iterable, Union
+from typing import (
+    List,
+    Dict,
+    Any,
+    Optional,
+    NamedTuple,
+    Tuple,
+    Iterator,
+    Iterable,
+    Union,
+)
 from types import FrameType, TracebackType, CodeType, FunctionType, ModuleType
 import typing
 
 import ast
+import datetime
+
 # noinspection PyCompatibility
 import html
 import inspect
@@ -31,39 +43,66 @@ from cached_property import cached_property
 from cheap_repr import cheap_repr, try_register_repr
 from cheap_repr.utils import safe_qualname, exception_string
 from birdseye.db import Database, retry_db
-from birdseye.tracer import TreeTracerBase, TracedFile, EnterCallInfo, ExitCallInfo, FrameInfo, ChangeValue, Loop
+from birdseye.tracer import (
+    TreeTracerBase,
+    TracedFile,
+    EnterCallInfo,
+    ExitCallInfo,
+    FrameInfo,
+    ChangeValue,
+    Loop,
+)
 from birdseye import tracer
-from birdseye.utils import correct_type, PY3, PY2, one_or_none, \
-    of_type, Deque, Text, flatten_list, lru_cache, ProtocolEncoder, IPYTHON_FILE_PATH, source_without_decorators, \
-    is_future_import, get_unfrozen_datetime, FILE_SENTINEL_NAME, read_source_file
+from birdseye.utils import (
+    correct_type,
+    PY3,
+    PY2,
+    one_or_none,
+    of_type,
+    Deque,
+    Text,
+    flatten_list,
+    lru_cache,
+    ProtocolEncoder,
+    IPYTHON_FILE_PATH,
+    source_without_decorators,
+    is_future_import,
+    get_unfrozen_datetime,
+    FILE_SENTINEL_NAME,
+    read_source_file,
+)
 from birdseye import __version__
 
 try:
     from numpy import ndarray
 except Exception:
+
     class ndarray(object):
         pass
+
 
 try:
     from pandas import DataFrame, Series
 except Exception:
+
     class DataFrame(object):
         pass
-
 
     class Series(object):
         pass
 
+
 try:
     from django.db.models import QuerySet
 except Exception:
+
     class QuerySet(object):
         pass
 
 
-warn_if_outdated('birdseye', __version__)
+warn_if_outdated("birdseye", __version__)
 
-CodeInfo = namedtuple('CodeInfo', 'db_func traced_file arg_names')
+CodeInfo = namedtuple("CodeInfo", "db_func traced_file arg_names")
 
 
 class BirdsEye(TreeTracerBase):
@@ -99,6 +138,10 @@ class BirdsEye(TreeTracerBase):
                 pandas_rows=6,
                 pandas_cols=10,
             ),
+        )
+        # Set Job name from JOB_NAME environment variable otherwise you an approximate timestamp
+        self.job_name = os.environ.get("JOB_NAME") or datetime.datetime.now().strftime(
+            "%Y-%m-%d %H:%M"
         )
 
     @cached_property
@@ -156,9 +199,11 @@ class BirdsEye(TreeTracerBase):
             # If this is an expression statement and the last statement
             # in the body, the value is returned from the cell magic
             # to be displayed as usual
-            if (self._code_infos[frame.f_code].traced_file.is_ipython_cell
-                    and isinstance(node.parent, ast.Expr)
-                    and node.parent is node.parent.parent.body[-1]):
+            if (
+                self._code_infos[frame.f_code].traced_file.is_ipython_cell
+                and isinstance(node.parent, ast.Expr)
+                and node.parent is node.parent.parent.body[-1]
+            ):
                 self._ipython_cell_value = value
 
             if is_obvious_builtin(node, self.stack[frame].expression_values[node]):
@@ -171,18 +216,24 @@ class BirdsEye(TreeTracerBase):
                 node_value = NodeValue.expression(
                     self.num_samples,
                     value,
-                    level=max(1, 3 - len(node._loops) * (not self._is_first_loop_iteration(node, frame))),
+                    level=max(
+                        1,
+                        3
+                        - len(node._loops)
+                        * (not self._is_first_loop_iteration(node, frame)),
+                    ),
                 )
                 self._set_node_value(node, frame, node_value)
             self._check_inner_call(frame_info, node, node_value)
 
         # i.e. is `node` the `y` in `[f(x) for x in y]`, making `node.parent` the `for x in y`
         is_special_comprehension_iter = (
-            isinstance(node.parent, ast.comprehension) and
-            node is node.parent.iter and
-
+            isinstance(node.parent, ast.comprehension)
+            and node is node.parent.iter
+            and
             # Generators execute in their own time and aren't directly attached to the parent frame
-            not isinstance(node.parent.parent, ast.GeneratorExp))
+            not isinstance(node.parent.parent, ast.GeneratorExp)
+        )
 
         if not is_special_comprehension_iter:
             return None
@@ -208,7 +259,7 @@ class BirdsEye(TreeTracerBase):
         # type: (FrameInfo, Union[ast.stmt, ast.expr], NodeValue) -> None
         inner_calls = frame_info.inner_calls.pop(node, None)
         if inner_calls:
-            node_value.set_meta('inner_calls', inner_calls)
+            node_value.set_meta("inner_calls", inner_calls)
 
     def _is_first_loop_iteration(self, node, frame):
         # type: (ast.AST, FrameType) -> bool
@@ -261,21 +312,21 @@ class BirdsEye(TreeTracerBase):
             arguments = []
         else:
             f_locals = frame.f_locals.copy()  # type: Dict[str, Any]
-            arguments = [(name, f_locals.pop(name))
-                         for name in code_info.arg_names
-                         if name] + [
-
-                            # Local variables other than actual arguments. These are variables from
-                            # the enclosing scope. It's handy to treat them like arguments in the UI
-                            it for it in f_locals.items()
-                            if it[0][0] != '.'  # Appears when using nested tuple arguments
-                        ]
+            arguments = [
+                (name, f_locals.pop(name)) for name in code_info.arg_names if name
+            ] + [
+                # Local variables other than actual arguments. These are variables from
+                # the enclosing scope. It's handy to treat them like arguments in the UI
+                it
+                for it in f_locals.items()
+                if it[0][0] != "."  # Appears when using nested tuple arguments
+            ]
         frame_info.arguments = json.dumps([[k, cheap_repr(v)] for k, v in arguments])
         frame_info.call_id = self._call_id()
         frame_info.inner_calls = defaultdict(list)
         prev = self.stack.get(enter_info.caller_frame)
         if prev:
-            inner_calls = getattr(prev, 'inner_calls', None)
+            inner_calls = getattr(prev, "inner_calls", None)
             if inner_calls is not None:
                 inner_calls[enter_info.call_node].append(frame_info.call_id)
 
@@ -301,7 +352,9 @@ class BirdsEye(TreeTracerBase):
         db_func = self._code_infos[frame.f_code].db_func
         exc = exit_info.exc_value  # type: Optional[Exception]
         if exc:
-            traceback_str = ''.join(traceback.format_exception(type(exc), exc, exit_info.exc_tb))
+            traceback_str = "".join(
+                traceback.format_exception(type(exc), exc, exit_info.exc_tb)
+            )
             exception = exception_string(exc)
         else:
             traceback_str = exception = None
@@ -309,23 +362,28 @@ class BirdsEye(TreeTracerBase):
         @retry_db
         def add_call():
             Call = self.db.Call
-            call = Call(id=frame_info.call_id,
-                        function_id=db_func,
-                        arguments=frame_info.arguments,
-                        return_value=cheap_repr(exit_info.return_value),
-                        exception=exception,
-                        traceback=traceback_str,
-                        data=json.dumps(
-                            dict(
-                                node_values=node_values,
-                                loop_iterations=top_iteration.extract_iterations()['loops'],
-                                type_names=type_registry.names(),
-                                num_special_types=type_registry.num_special_types,
-                            ),
-                            cls=ProtocolEncoder,
-                            separators=(',', ':')
-                        ),
-                        start_time=frame_info.start_time)
+            job_id = self._db_job(self.job_name)
+            # job = Job
+            call = Call(
+                id=frame_info.call_id,
+                function_id=db_func,
+                arguments=frame_info.arguments,
+                return_value=cheap_repr(exit_info.return_value),
+                exception=exception,
+                traceback=traceback_str,
+                data=json.dumps(
+                    dict(
+                        node_values=node_values,
+                        loop_iterations=top_iteration.extract_iterations()["loops"],
+                        type_names=type_registry.names(),
+                        num_special_types=type_registry.num_special_types,
+                    ),
+                    cls=ProtocolEncoder,
+                    separators=(",", ":"),
+                ),
+                start_time=frame_info.start_time,
+                job_id=job_id,
+            )
             with self.db.session_scope() as session:
                 session.add(call)
 
@@ -374,22 +432,32 @@ class BirdsEye(TreeTracerBase):
         end_lineno = start_lineno + len(lines)
         name = safe_qualname(func)
         source_file = inspect.getsourcefile(func)
-        if source_file.startswith('<ipython-input'):
+        if source_file.startswith("<ipython-input"):
             filename = IPYTHON_FILE_PATH
         else:
             filename = os.path.abspath(source_file)
         traced_file = new_func.traced_file
 
         arg_info = inspect.getargs(new_func.__code__)
-        arg_names = list(chain(flatten_list(arg_info[0]), arg_info[1:]))  # type: List[str]
-        self._trace(name, filename, traced_file, new_func.__code__, typ='function',
-                    start_lineno=start_lineno, end_lineno=end_lineno,
-                    arg_names=arg_names)
+        arg_names = list(
+            chain(flatten_list(arg_info[0]), arg_info[1:])
+        )  # type: List[str]
+        self._trace(
+            name,
+            filename,
+            traced_file,
+            new_func.__code__,
+            typ="function",
+            start_lineno=start_lineno,
+            end_lineno=end_lineno,
+            arg_names=arg_names,
+        )
 
         return new_func
 
     def exec_ipython_cell(self, source, callback):
         from IPython import get_ipython
+
         shell = get_ipython()
         filename = name = shell.compile.cache(source)
         flags = shell.compile.flags
@@ -399,12 +467,14 @@ class BirdsEye(TreeTracerBase):
 
         for node in traced_file.root.body:
             if is_future_import(node):
-                raise ValueError('from __future__ import ... statements '
-                                 'are not allowed in cells traced with %%eye')
+                raise ValueError(
+                    "from __future__ import ... statements "
+                    "are not allowed in cells traced with %%eye"
+                )
 
         shell.user_global_ns.update(self._trace_methods_dict(traced_file))
 
-        self._trace(name, filename, traced_file, traced_file.code, 'module', source)
+        self._trace(name, filename, traced_file, traced_file.code, "module", source)
 
         try:
             shell.ex(traced_file.code)
@@ -424,16 +494,17 @@ class BirdsEye(TreeTracerBase):
                 context -= 1
         filename = os.path.abspath(filename)
 
-        if frame.f_globals.get('__name__') != '__main__':
+        if frame.f_globals.get("__name__") != "__main__":
             if PY3 and self._treetrace_hidden_with_stmt.__name__ not in frame.f_globals:
                 raise RuntimeError(
-                    'To trace an imported module, you must import birdseye before '
-                    'importing that module.')
+                    "To trace an imported module, you must import birdseye before "
+                    "importing that module."
+                )
             return
 
         lines = read_source_file(filename).splitlines()
-        lines[:frame.f_lineno] = [''] * frame.f_lineno
-        source = '\n'.join(lines)
+        lines[: frame.f_lineno] = [""] * frame.f_lineno
+        source = "\n".join(lines)
         self.exec_string(source, filename, frame.f_globals, frame.f_locals, deep)
         sys.exit(0)
 
@@ -445,7 +516,14 @@ class BirdsEye(TreeTracerBase):
 
         globs.update(self._trace_methods_dict(traced_file))
 
-        self._trace(FILE_SENTINEL_NAME, filename, traced_file, traced_file.code, 'module', source)
+        self._trace(
+            FILE_SENTINEL_NAME,
+            filename,
+            traced_file,
+            traced_file.code,
+            "module",
+            source,
+        )
 
         if deep:
             nodes_by_lineno = {
@@ -457,7 +535,7 @@ class BirdsEye(TreeTracerBase):
             def find_code(root_code):
                 # type: (CodeType) -> None
                 for code in root_code.co_consts:  # type: CodeType
-                    if not inspect.iscode(code) or code.co_name.startswith('<'):
+                    if not inspect.iscode(code) or code.co_name.startswith("<"):
                         continue
 
                     find_code(code)
@@ -468,8 +546,11 @@ class BirdsEye(TreeTracerBase):
                         continue
 
                     self._trace(
-                        code.co_name, filename, traced_file, code,
-                        typ='function',
+                        code.co_name,
+                        filename,
+                        traced_file,
+                        code,
+                        typ="function",
                         source=source,
                         start_lineno=lineno,
                         end_lineno=node.last_token.end[0] + 1,
@@ -480,16 +561,16 @@ class BirdsEye(TreeTracerBase):
         exec(traced_file.code, globs, locs)
 
     def _trace(
-            self,
-            name,
-            filename,
-            traced_file,
-            code,
-            typ,
-            source='',
-            start_lineno=1,
-            end_lineno=None,
-            arg_names=(),
+        self,
+        name,
+        filename,
+        traced_file,
+        code,
+        typ,
+        source="",
+        start_lineno=1,
+        end_lineno=None,
+        arg_names=(),
     ):
         if not end_lineno:
             end_lineno = start_lineno + len(source.splitlines())
@@ -504,12 +585,14 @@ class BirdsEye(TreeTracerBase):
                 if node._loops
             },
         )
-        if typ == 'function':
+        if typ == "function":
             tokens = traced_file.tokens
-            func_node = only(node
-                             for node, _ in nodes
-                             if isinstance(node, ast.FunctionDef)
-                             and node.first_token.start[0] == start_lineno)
+            func_node = only(
+                node
+                for node, _ in nodes
+                if isinstance(node, ast.FunctionDef)
+                and node.first_token.start[0] == start_lineno
+            )
             func_startpos, source = source_without_decorators(tokens, func_node)
             # These are for the PyCharm plugin
             data_dict.update(
@@ -518,7 +601,9 @@ class BirdsEye(TreeTracerBase):
             )
 
         data = json.dumps(data_dict, sort_keys=True)
-        db_func = self._db_func(data, filename, html_body, name, start_lineno, source, typ)
+        db_func = self._db_func(
+            data, filename, html_body, name, start_lineno, source, typ
+        )
         self._code_infos[code] = CodeInfo(db_func, traced_file, arg_names)
 
     def _loop_ranges(self, nodes, tokens, func_start):
@@ -534,7 +619,7 @@ class BirdsEye(TreeTracerBase):
         #
         # this yields the range of the condition 'x < 10'.
         for node, (classes, _, __) in nodes:
-            if 'loop' not in classes:
+            if "loop" not in classes:
                 continue
 
             try:
@@ -546,11 +631,7 @@ class BirdsEye(TreeTracerBase):
             start -= func_start
             end -= func_start
 
-            yield dict(
-                tree_index=node._tree_index,
-                start=start,
-                end=end
-            )
+            yield dict(tree_index=node._tree_index, start=start, end=end)
 
     def _node_ranges(self, nodes, tokens, func_start):
         for node, (classes, _, __) in nodes:
@@ -559,8 +640,9 @@ class BirdsEye(TreeTracerBase):
             end -= func_start
 
             if start < 0:
-                assert (end < 0  # nodes before the def, i.e. decorators
-                        or isinstance(node, ast.FunctionDef))
+                assert end < 0 or isinstance(  # nodes before the def, i.e. decorators
+                    node, ast.FunctionDef
+                )
                 continue
 
             yield dict(
@@ -576,28 +658,54 @@ class BirdsEye(TreeTracerBase):
         """
         Retrieve the Function object from the database if one exists, or create one.
         """
+
         def h(s):
-            return hashlib.sha256(s.encode('utf8')).hexdigest()
+            return hashlib.sha256(s.encode("utf8")).hexdigest()
 
         function_hash = h(filename + name + html_body + data + str(start_lineno))
 
         Function = self.db.Function
 
         with self.db.session_scope() as session:
-            db_func = one_or_none(session.query(Function).filter_by(hash=function_hash))  # type: Optional[Function]
+            db_func = one_or_none(
+                session.query(Function).filter_by(hash=function_hash)
+            )  # type: Optional[Function]
             if not db_func:
-                db_func = Function(file=filename,
-                                   name=name,
-                                   type=typ,
-                                   html_body=html_body,
-                                   lineno=start_lineno,
-                                   data=data,
-                                   body_hash=h(source),
-                                   hash=function_hash)
+                db_func = Function(
+                    file=filename,
+                    name=name,
+                    type=typ,
+                    html_body=html_body,
+                    lineno=start_lineno,
+                    data=data,
+                    body_hash=h(source),
+                    hash=function_hash,
+                )
                 session.add(db_func)
                 session.commit()  # ensure .id exists
             assert isinstance(db_func.id, int)
             return db_func.id
+
+    @retry_db
+    def _db_job(self, name):
+        """
+        Retrieve the Job object from database by name or create it
+        """
+
+        Job = self.db.Job
+
+        with self.db.session_scope() as session:
+            db_job = one_or_none(
+                session.query(Job).filter_by(name=name)
+            )  # type: Optional[Function]
+            if not db_job:
+                db_job = Job(
+                    name=name,
+                )
+                session.add(db_job)
+                session.commit()  # ensure .id exists
+            assert isinstance(db_job.id, int)
+            return db_job.id
 
     def _nodes_of_interest(self, traced_file, start_lineno, end_lineno):
         # type: (TracedFile, int, int) -> Iterator[Tuple[ast.AST, Tuple]]
@@ -608,11 +716,12 @@ class BirdsEye(TreeTracerBase):
         for node in traced_file.nodes:
             classes = []
 
-            if (isinstance(node, (ast.While, ast.For, ast.comprehension)) and
-                    not isinstance(node.parent, ast.GeneratorExp)):
-                classes.append('loop')
+            if isinstance(
+                node, (ast.While, ast.For, ast.comprehension)
+            ) and not isinstance(node.parent, ast.GeneratorExp):
+                classes.append("loop")
             if isinstance(node, ast.stmt):
-                classes.append('stmt')
+                classes.append("stmt")
 
             if isinstance(node, ast.expr):
                 if not node._is_interesting_expression:
@@ -623,7 +732,7 @@ class BirdsEye(TreeTracerBase):
             assert isinstance(node, ast.AST)
 
             # In particular FormattedValue is missing this
-            if not hasattr(node, 'first_token'):
+            if not hasattr(node, "first_token"):
                 continue
 
             if not start_lineno <= node.first_token.start[0] <= end_lineno:
@@ -642,7 +751,7 @@ class BirdsEye(TreeTracerBase):
         of HTMLPositions, which are essentially places to insert HTML into the source plus some
         metadata. The order of the fields of HTMLPosition ensure that when the list is sorted,
         the resulting HTML is valid and correct. Specifically, the fields are:
-        
+
           1. index: the index in the source string where the HTML would be inserted
           2. is_start: Indicates if this piece of HTML is the start of a tag, rather than the end.
              Ends should appear first, so that the resulting HTML looks like:
@@ -654,15 +763,15 @@ class BirdsEye(TreeTracerBase):
           3. depth: the depth of the corresponding node in the AST. We want the start of a tag from
              a node to appear before the start of a tag nested within, e.g. `foo()` should become:
                 <span [for foo()]><span [for foo]>foo</span>()</span>
-             rather than:   
+             rather than:
                 <span [for foo]><span [for foo()]>foo</span>()</span>
           4. html: the actual HTML to insert. Not important for ordering.
-          
+
         Mostly the list contains pairs of HTMLPositions corresponding to AST nodes, one for the
         start and one for the end.
-        
+
         After the list is sorted, the HTML generated is essentially:
-        
+
         source[0:positions[0].index] + positions[0].html + source[positions[0].index:positions[1].index] + positions[1].html + ...
         """
 
@@ -675,33 +784,39 @@ class BirdsEye(TreeTracerBase):
 
         for node, (classes, start, end) in nodes:
             # noinspection PyArgumentList
-            positions.extend(map(
-                HTMLPosition,
-                [start, end],
-                [True, False],  # is_start
-                [node._depth, node._depth],
-                ['<span data-index="%s" class="%s">' % (node._tree_index, ' '.join(classes)),
-                 '</span>']))
+            positions.extend(
+                map(
+                    HTMLPosition,
+                    [start, end],
+                    [True, False],  # is_start
+                    [node._depth, node._depth],
+                    [
+                        '<span data-index="%s" class="%s">'
+                        % (node._tree_index, " ".join(classes)),
+                        "</span>",
+                    ],
+                )
+            )
 
         end_lineno = self._separate_comprehensions(
-            [n[0] for n in nodes],
-            end_lineno, positions, traced_file)
+            [n[0] for n in nodes], end_lineno, positions, traced_file
+        )
 
         # This just makes the loop below simpler
-        positions.append(HTMLPosition(len(traced_file.source), False, 0, ''))
+        positions.append(HTMLPosition(len(traced_file.source), False, 0, ""))
 
         positions.sort()
 
         html_parts = []
         start = 0
         for position in positions:
-            html_parts.append(html.escape(traced_file.source[start:position.index]))
+            html_parts.append(html.escape(traced_file.source[start : position.index]))
             html_parts.append(position.html)
             start = position.index
-        html_body = ''.join(html_parts)
-        html_body = '\n'.join(html_body.split('\n')[start_lineno - 1:end_lineno - 1])
+        html_body = "".join(html_parts)
+        html_body = "\n".join(html_body.split("\n")[start_lineno - 1 : end_lineno - 1])
 
-        return html_body.strip('\n')
+        return html_body.strip("\n")
 
     def _separate_comprehensions(self, nodes, end_lineno, positions, traced_file):
         # type: (list, int, List[HTMLPosition], TracedFile) -> int
@@ -721,9 +836,10 @@ class BirdsEye(TreeTracerBase):
          for y in range(5)]
         """
 
-        comprehensions = group_by_key_func(of_type((ast.comprehension, ast.While, ast.For), nodes),
-                                           lambda c: c.first_token.start[0]
-                                           )  # type: Dict[Any, Iterable[ast.comprehension]]
+        comprehensions = group_by_key_func(
+            of_type((ast.comprehension, ast.While, ast.For), nodes),
+            lambda c: c.first_token.start[0],
+        )  # type: Dict[Any, Iterable[ast.comprehension]]
 
         def get_start(n):
             # type: (ast.AST) -> int
@@ -732,14 +848,17 @@ class BirdsEye(TreeTracerBase):
         for comp_list in comprehensions.values():
             prev_start = None  # type: Optional[int]
             for comp in sorted(comp_list, key=lambda c: c.first_token.startpos):
-                if isinstance(comp, ast.comprehension) and comp is comp.parent.generators[0]:
+                if (
+                    isinstance(comp, ast.comprehension)
+                    and comp is comp.parent.generators[0]
+                ):
                     start = get_start(comp.parent)
                     if prev_start is not None and start < prev_start:
                         start = get_start(comp)
                 else:
                     start = get_start(comp)
                 if prev_start is not None:
-                    positions.append(HTMLPosition(start, True, 0, '\n '))
+                    positions.append(HTMLPosition(start, True, 0, "\n "))
                     end_lineno += 1
                 prev_start = start
 
@@ -748,22 +867,27 @@ class BirdsEye(TreeTracerBase):
 
 eye = BirdsEye()
 
-HTMLPosition = NamedTuple('HTMLPosition', [
-    ('index', int),
-    ('is_start', bool),
-    ('depth', int),
-    ('html', str),
-])
+HTMLPosition = NamedTuple(
+    "HTMLPosition",
+    [
+        ("index", int),
+        ("is_start", bool),
+        ("depth", int),
+        ("html", str),
+    ],
+)
 
 
 def _deep_dict():
     return defaultdict(_deep_dict)
 
 
-_bad_codes = (eye.enter_call.__code__,
-              eye.exit_call.__code__,
-              eye.after_expr.__code__,
-              eye.after_stmt.__code__)
+_bad_codes = (
+    eye.enter_call.__code__,
+    eye.exit_call.__code__,
+    eye.after_expr.__code__,
+    eye.after_stmt.__code__,
+)
 
 
 def _tracing_recursively(frame):
@@ -778,6 +902,7 @@ class Iteration(object):
     Corresponds to an iteration of a loop during a call, OR
     the call itself (FrameInfo.iteration).
     """
+
     def __init__(self):
         # Mapping of nodes (via node._tree_index) to the value of that
         # node in this iteration. Only contains nodes within the corresponding
@@ -797,12 +922,13 @@ class Iteration(object):
     def extract_iterations(self):
         # type: () -> Dict[str, Union[int, Dict]]
         return {
-            'index': self.index,
-            'loops': {
-                tree_index: [iteration.extract_iterations()
-                             for iteration in iteration_list]
+            "index": self.index,
+            "loops": {
+                tree_index: [
+                    iteration.extract_iterations() for iteration in iteration_list
+                ]
                 for tree_index, iteration_list in self.loops.items()
-            }
+            },
         }
 
 
@@ -813,6 +939,7 @@ class IterationList(Iterable[Iteration]):
     and any in the middle where unique nodes had values, so that
     any node which appeared during this loop exists in at least some iterations.
     """
+
     side_len = 3
 
     def __init__(self):
@@ -905,7 +1032,8 @@ class NodeValue(object):
     This can mean different things, see the classmethods.
     Can also contain some metadata, including links to other calls.
     """
-    __slots__ = ('val_repr', 'type_index', 'meta', 'children')
+
+    __slots__ = ("val_repr", "type_index", "meta", "children")
 
     def __init__(self, val_repr, type_index):
         self.val_repr = val_repr  # type: str
@@ -935,7 +1063,7 @@ class NodeValue(object):
         Represents a bit of code, usually a statement, that executed successfully but
         doesn't have an actual value.
         """
-        return cls('', -2)
+        return cls("", -2)
 
     @classmethod
     def exception(cls, exc_value):
@@ -962,7 +1090,7 @@ class NodeValue(object):
             except:
                 pass
             else:
-                result.set_meta('len', length)
+                result.set_meta("len", length)
 
         if isinstance(val, ModuleType):
             level = min(level, 2)
@@ -970,9 +1098,9 @@ class NodeValue(object):
         add_child = partial(result.add_child, samples, level - 1)
 
         if isinstance(val, (Series, ndarray)):
-            attrs = ['dtype']
+            attrs = ["dtype"]
             if isinstance(val, ndarray):
-                attrs.append('shape')
+                attrs.append("shape")
             for name in attrs:
                 try:
                     attr = getattr(val, name)
@@ -982,9 +1110,9 @@ class NodeValue(object):
                     add_child(name, attr)
 
         if level >= 3 or level >= 2 and isinstance(val, Series):
-            sample_type = 'big'
+            sample_type = "big"
         else:
-            sample_type = 'small'
+            sample_type = "small"
 
         samples = samples[sample_type]
 
@@ -993,31 +1121,32 @@ class NodeValue(object):
 
         if isinstance(val, DataFrame):
             meta = {}
-            result.set_meta('dataframe', meta)
+            result.set_meta("dataframe", meta)
 
-            max_rows = samples['pandas_rows']
-            max_cols = samples['pandas_cols']
+            max_rows = samples["pandas_rows"]
+            max_cols = samples["pandas_cols"]
 
             if length > max_rows + 2:
-                meta['row_break'] = max_rows // 2
+                meta["row_break"] = max_rows // 2
 
             columns = val.columns
             num_cols = len(columns)
             if num_cols > max_cols + 2:
-                meta['col_break'] = max_cols // 2
+                meta["col_break"] = max_cols // 2
 
             indices = set(_sample_indices(num_cols, max_cols))
-            for i, (formatted_name, label) in enumerate(zip(val.columns.format(sparsify=False),
-                                                            val.columns)):
+            for i, (formatted_name, label) in enumerate(
+                zip(val.columns.format(sparsify=False), val.columns)
+            ):
                 if i in indices:
                     add_child(formatted_name, val.iloc[:, i])
 
             return result
 
         if isinstance(val, Series):
-            for i in _sample_indices(length, samples['pandas_rows']):
+            for i in _sample_indices(length, samples["pandas_rows"]):
                 try:
-                    k = val.index[i:i + 1].format(sparsify=False)[0]
+                    k = val.index[i : i + 1].format(sparsify=False)[0]
                     v = val.iloc[i]
                 except:
                     pass
@@ -1025,15 +1154,13 @@ class NodeValue(object):
                     add_child(k, v)
             return result
 
-        if (level <= 0 or
-                isinstance(val,
-                           (str, bytes, range)
-                           if PY3 else
-                           (str, unicode, xrange))):
+        if level <= 0 or isinstance(
+            val, (str, bytes, range) if PY3 else (str, unicode, xrange)
+        ):
             return result
 
         if isinstance(val, (Sequence, ndarray)) and length is not None:
-            for i in _sample_indices(length, samples['list']):
+            for i in _sample_indices(length, samples["list"]):
                 try:
                     v = val[i]
                 except:
@@ -1042,28 +1169,26 @@ class NodeValue(object):
                     add_child(str(i), v)
 
         if isinstance(val, Mapping):
-            for k, v in islice(_safe_iter(val, iteritems), samples['dict']):
+            for k, v in islice(_safe_iter(val, iteritems), samples["dict"]):
                 add_child(cheap_repr(k), v)
 
         if isinstance(val, Set):
             vals = _safe_iter(val)
-            num_items = samples['set']
+            num_items = samples["set"]
             if length is None or length > num_items + 2:
                 vals = islice(vals, num_items)
             for i, v in enumerate(vals):
-                add_child('<%s>' % i, v)
+                add_child("<%s>" % i, v)
 
-        d = getattr(val, '__dict__', None)
+        d = getattr(val, "__dict__", None)
         if d:
-            for k in sorted(islice(_safe_iter(d),
-                                   samples['attributes']),
-                            key=str):
+            for k in sorted(islice(_safe_iter(d), samples["attributes"]), key=str):
                 v = d[k]
                 if isinstance(v, TracedFile):
                     continue
                 add_child(str(k), v)
         else:
-            for s in sorted(getattr(type(val), '__slots__', None) or ()):
+            for s in sorted(getattr(type(val), "__slots__", None) or ()):
                 try:
                     attr = getattr(val, s)
                 except AttributeError:
@@ -1085,12 +1210,10 @@ def _sample_indices(length, max_length):
     if length <= max_length + 2:
         return range(length)
     else:
-        return chain(range(max_length // 2),
-                     range(length - max_length // 2,
-                           length))
+        return chain(range(max_length // 2), range(length - max_length // 2, length))
 
 
-@try_register_repr('pandas', 'Series')
+@try_register_repr("pandas", "Series")
 def _repr_series_one_line(x, helper):
     n = len(x)
     if n == 0:
@@ -1100,14 +1223,14 @@ def _repr_series_one_line(x, helper):
     maxparts = _repr_series_one_line.maxparts
     for i in _sample_indices(n, maxparts):
         try:
-            k = x.index[i:i + 1].format(sparsify=False)[0]
+            k = x.index[i : i + 1].format(sparsify=False)[0]
         except TypeError:
-            k = x.index[i:i + 1].format()[0]
+            k = x.index[i : i + 1].format()[0]
         v = x.iloc[i]
-        pieces.append('%s = %s' % (k, cheap_repr(v, newlevel)))
+        pieces.append("%s = %s" % (k, cheap_repr(v, newlevel)))
     if n > maxparts + 2:
-        pieces.insert(maxparts // 2, '...')
-    return '; '.join(pieces)
+        pieces.insert(maxparts // 2, "...")
+    return "; ".join(pieces)
 
 
 def is_interesting_expression(node):
@@ -1116,15 +1239,21 @@ def is_interesting_expression(node):
     If this expression has a value that may not be exactly what it looks like,
     return True. Put differently, return False if this is just a literal.
     """
-    return (isinstance(node, ast.expr) and
-            not (isinstance(node, (ast.Num, ast.Str, getattr(ast, 'NameConstant', ()))) or
-                 isinstance(getattr(node, 'ctx', None),
-                            (ast.Store, ast.Del)) or
-                 (isinstance(node, ast.UnaryOp) and
-                  isinstance(node.op, (ast.UAdd, ast.USub)) and
-                  isinstance(node.operand, ast.Num)) or
-                 (isinstance(node, (ast.List, ast.Tuple, ast.Dict)) and
-                  not any(is_interesting_expression(n) for n in ast.iter_child_nodes(node)))))
+    return isinstance(node, ast.expr) and not (
+        isinstance(node, (ast.Num, ast.Str, getattr(ast, "NameConstant", ())))
+        or isinstance(getattr(node, "ctx", None), (ast.Store, ast.Del))
+        or (
+            isinstance(node, ast.UnaryOp)
+            and isinstance(node.op, (ast.UAdd, ast.USub))
+            and isinstance(node.operand, ast.Num)
+        )
+        or (
+            isinstance(node, (ast.List, ast.Tuple, ast.Dict))
+            and not any(
+                is_interesting_expression(n) for n in ast.iter_child_nodes(node)
+            )
+        )
+    )
 
 
 # noinspection PyUnresolvedReferences
@@ -1139,7 +1268,8 @@ def is_obvious_builtin(node, value):
     Return True if this node looks like a builtin and it really is
     (i.e. hasn't been shadowed).
     """
-    return ((isinstance(node, ast.Name) and
-             node.id in builtins_dict and
-             builtins_dict[node.id] is value) or
-            isinstance(node, getattr(ast, 'NameConstant', ())))
+    return (
+        isinstance(node, ast.Name)
+        and node.id in builtins_dict
+        and builtins_dict[node.id] is value
+    ) or isinstance(node, getattr(ast, "NameConstant", ()))

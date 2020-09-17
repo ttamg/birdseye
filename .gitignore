@@ -12,5 +12,7 @@ screen_*.png
 sandbox.py
 test.txt
 _build/
+
 .vscode
 .DS_Store
+*.sqlite

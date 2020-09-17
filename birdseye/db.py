@@ -4,7 +4,13 @@ import functools
 import sys
 
 from future import standard_library
-from sqlalchemy.exc import OperationalError, InterfaceError, InternalError, ProgrammingError, ArgumentError
+from sqlalchemy.exc import (
+    OperationalError,
+    InterfaceError,
+    InternalError,
+    ProgrammingError,
+    ArgumentError,
+)
 
 standard_library.install_aliases()
 import json
@@ -14,8 +20,18 @@ from contextlib import contextmanager
 
 from humanize import naturaltime
 from markupsafe import Markup
-from sqlalchemy import Sequence, UniqueConstraint, create_engine, Column, Integer, Text, ForeignKey, DateTime, String, \
-    Index
+from sqlalchemy import (
+    Sequence,
+    UniqueConstraint,
+    create_engine,
+    Column,
+    Integer,
+    Text,
+    ForeignKey,
+    DateTime,
+    String,
+    Index,
+)
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.dialects.mysql import LONGTEXT
@@ -23,18 +39,23 @@ from littleutils import select_attrs, retry
 from birdseye.utils import IPYTHON_FILE_PATH, is_ipython_cell
 from sqlalchemy.dialects.mysql.base import RESERVED_WORDS
 
-RESERVED_WORDS.add('function')
+RESERVED_WORDS.add("function")
 
 DB_VERSION = 1
 
 
 class Database(object):
     def __init__(self, db_uri=None, _skip_version_check=False):
-        self.db_uri = db_uri = (
-                db_uri
-                or os.environ.get('BIRDSEYE_DB')
-                or os.path.join(os.path.expanduser('~'),
-                                '.birdseye.db'))
+        self.db_uri = db_uri = db_uri or os.environ.get("BIRDSEYE_DB")
+        if self.db_uri is None:
+            raise Exception(
+                f"You must set BIRDSEYE_DB environment variable to set a FILE or URL for the Birdseye database."
+            )
+        # self.db_uri = db_uri = (
+        #     db_uri
+        #     or os.environ.get("BIRDSEYE_DB")
+        #     or os.path.join(os.path.expanduser("~"), ".birdseye.db")
+        # )
 
         kwargs = dict(
             pool_recycle=280,
@@ -44,7 +65,7 @@ class Database(object):
         try:
             engine = create_engine(db_uri, **kwargs)
         except ArgumentError:
-            db_uri = 'sqlite:///' + db_uri
+            db_uri = "sqlite:///" + db_uri
             engine = create_engine(db_uri, **kwargs)
 
         self.engine = engine
@@ -67,10 +88,7 @@ class Database(object):
         class KeyValueStore(object):
             def __getitem__(self, item):
                 with db_self.session_scope() as session:
-                    return (session
-                            .query(KeyValue.value)
-                            .filter_by(key=item)
-                            .scalar())
+                    return session.query(KeyValue.value).filter_by(key=item).scalar()
 
             def __setitem__(self, key, value):
                 with db_self.session_scope() as session:
@@ -80,18 +98,28 @@ class Database(object):
             __getattr__ = __getitem__
             __setattr__ = __setitem__
 
-        LongText = LONGTEXT if engine.name == 'mysql' else Text
+        LongText = LONGTEXT if engine.name == "mysql" else Text
+
+        class Job(Base):
+            """ New table added to store a common job """
+
+            id = Column(Integer, primary_key=True)
+            name = Column(Text, unique=True)
 
         class Call(Base):
             id = Column(String(length=32), primary_key=True)
-            function_id = Column(Integer, ForeignKey('function.id'), index=True)
-            function = relationship('Function', backref=backref('calls', lazy='dynamic'))
+            function_id = Column(Integer, ForeignKey("function.id"), index=True)
+            function = relationship(
+                "Function", backref=backref("calls", lazy="dynamic")
+            )
             arguments = Column(Text)
             return_value = Column(Text)
             exception = Column(Text)
             traceback = Column(Text)
             data = Column(LongText)
             start_time = Column(DateTime, index=True)
+            job_id = Column(Integer, ForeignKey("job.id"), index=True)
+            job = relationship("Job", backref=backref("calls", lazy="dynamic"))
 
             @property
             def pretty_start_time(self):
@@ -100,23 +128,24 @@ class Database(object):
             @staticmethod
             def _pretty_time(dt):
                 if not dt:
-                    return ''
-                return Markup('%s (%s)' % (
-                    dt.strftime('%Y-%m-%d&nbsp;%H:%M:%S'),
-                    naturaltime(dt)))
+                    return ""
+                return Markup(
+                    "%s (%s)" % (dt.strftime("%Y-%m-%d&nbsp;%H:%M:%S"), naturaltime(dt))
+                )
 
             @property
             def state_icon(self):
-                return Markup('<span class="glyphicon glyphicon-%s" '
-                              'style="color: %s"></span>' % (
-                                  ('ok', 'green') if self.success else
-                                  ('remove', 'red')))
+                return Markup(
+                    '<span class="glyphicon glyphicon-%s" '
+                    'style="color: %s"></span>'
+                    % (("ok", "green") if self.success else ("remove", "red"))
+                )
 
             @property
             def success(self):
                 if self.exception:
                     assert self.traceback
-                    assert self.return_value == 'None'
+                    assert self.return_value == "None"
                     return False
                 else:
                     assert not self.traceback
@@ -139,15 +168,27 @@ class Database(object):
 
             @staticmethod
             def basic_dict(call):
-                return dict(arguments=call.arguments_list,
-                            **select_attrs(call, 'id function_id return_value traceback '
-                                                 'exception start_time'))
+                return dict(
+                    arguments=call.arguments_list,
+                    **select_attrs(
+                        call,
+                        "id function_id return_value traceback " "exception start_time",
+                    ),
+                )
 
-            basic_columns = (id, function_id, return_value,
-                             traceback, exception, start_time, arguments)
+            basic_columns = (
+                id,
+                function_id,
+                return_value,
+                traceback,
+                exception,
+                start_time,
+                arguments,
+                job_id,
+            )
 
         class Function(Base):
-            id = Column(Integer, Sequence('function_id_seq'), primary_key=True)
+            id = Column(Integer, Sequence("function_id_seq"), primary_key=True)
             file = Column(Text)
             name = Column(Text)
             type = Column(Text)  # function or module
@@ -158,10 +199,9 @@ class Database(object):
             body_hash = Column(String(length=64), index=True)
 
             __table_args__ = (
-                UniqueConstraint('hash',
-                                 name='everything_unique'),
-                Index('idx_file', 'file', mysql_length=256),
-                Index('idx_name', 'name', mysql_length=32),
+                UniqueConstraint("hash", name="everything_unique"),
+                Index("idx_file", "file", mysql_length=256),
+                Index("idx_name", "name", mysql_length=32),
             )
 
             @property
@@ -170,10 +210,11 @@ class Database(object):
 
             @staticmethod
             def basic_dict(func):
-                return select_attrs(func, 'file name lineno hash body_hash type')
+                return select_attrs(func, "file name lineno hash body_hash type")
 
             basic_columns = (file, name, lineno, hash, body_hash, type)
 
+        self.Job = Job
         self.Call = Call
         self.Function = Function
         self._KeyValue = KeyValue
@@ -187,8 +228,10 @@ class Database(object):
             Base.metadata.create_all(engine)
             kv.version = DB_VERSION
         elif not self.table_exists(KeyValue) or int(kv.version) < DB_VERSION:
-            sys.exit('The birdseye database schema is out of date. '
-                     'Run "python -m birdseye.clear_db" to delete the existing tables.')
+            sys.exit(
+                "The birdseye database schema is out of date. "
+                'Run "python -m birdseye.clear_db" to delete the existing tables.'
+            )
 
     def table_exists(self, table):
         return self.engine.dialect.has_table(self.engine, table.__name__)
@@ -196,8 +239,11 @@ class Database(object):
     def all_file_paths(self):
         # type: () -> List[str]
         with self.session_scope() as session:
-            paths = [f[0] for f in session.query(self.Function.file).distinct()
-                     if not is_ipython_cell(f[0])]
+            paths = [
+                f[0]
+                for f in session.query(self.Function.file).distinct()
+                if not is_ipython_cell(f[0])
+            ]
         paths.sort()
         if IPYTHON_FILE_PATH in paths:
             paths.remove(IPYTHON_FILE_PATH)
@@ -205,7 +251,7 @@ class Database(object):
         return paths
 
     def clear(self):
-        for model in [self.Call, self.Function, self._KeyValue]:
+        for model in [self.Call, self.Function, self.Job, self._KeyValue]:
             if self.table_exists(model):
                 model.__table__.drop(self.engine)
 

@@ -1,51 +1,41 @@
-|logo| birdseye
-===============
+Quantco birdseye
+================
 
-|Build Status| |Supports Python versions 2.7, 3.5, and 3.6| |Join the
-chat at https://gitter.im/python_birdseye/Lobby|
+This is a fork of the original **Birdseye** package and adjusted for Quantco calculation mapping purposes.
 
-birdseye is a Python debugger which records the values of expressions in a
-function call and lets you easily view them after the function exits.
-For example:
+For the original package see https://github.com/alexmojaki/birdseye
 
-.. figure:: https://i.imgur.com/rtZEhHb.gif
-   :alt: Hovering over expressions
+For the original documentation see https://birdseye.readthedocs.io/en/latest/
 
-You can use birdseye no matter how you run or edit your code. Just ``pip install birdseye``, add the ``@eye`` decorator
-as seen above, run your function however you like, and view the results in your browser.
-It's also `integrated with some common tools <http://birdseye.readthedocs.io/en/latest/integrations.html>`_ for a smoother experience.
 
-Rather than stepping through lines, move back and forth through loop
-iterations and see how the values of selected expressions change:
+Modifications
+-------------
 
-.. figure:: https://i.imgur.com/236Gj2E.gif
-   :alt: Stepping through loop iterations
+We have made the following adjustments in this fork vs the original package.
 
-See which expressions raise exceptions, even if they’re suppressed:
+Functionality
+~~~~~~~~~~~~~
 
-.. figure:: http://i.imgur.com/UxqDyIL.png
-   :alt: Exception highlighting
+*  More explicit use of environment variables to log the runs and push the tracking to the same common birdseye database.
 
-Expand concrete data structures and objects to see their contents.
-Lengths and depths are limited to avoid an overload of data.
+*  Added the concept of a **Job** which is set as an environment variable to link together the different function calls for one calculation or sample policy.  If not filled in it uses a broad timestamp as the job.  
 
-.. figure:: http://i.imgur.com/PfmqZnT.png
-   :alt: Exploring data structures and objects
+Env variables
+~~~~~~~~~~~~~
 
-Calls are organised into functions (which are organised into files) and
-ordered by time, letting you see what happens at a glance:
+#. Made it an explicit requirement to set the `BIRDSEYE_DB` environment variable rather than defaulting to creating in user home directory.  This just avoids confusion and ensures we have a sensible explicit setup.
 
-.. figure:: https://i.imgur.com/5OrB76I.png
-   :alt: List of function calls
+#. Added a `JOB_NAME` environment variable that can be set before running the job.  This will then set the Job to be the Job object with this name in the database.  This is useful as we can then have a job to watch one calculation run job end to end.
 
-.. |logo| image:: https://i.imgur.com/i7uaJDO.png
-.. |Build Status| image:: https://travis-ci.org/alexmojaki/birdseye.svg?branch=master
-   :target: https://travis-ci.org/alexmojaki/birdseye
-.. |Supports Python versions 2.7, 3.5, and 3.6| image:: https://img.shields.io/pypi/pyversions/birdseye.svg
-   :target: https://pypi.python.org/pypi/birdseye
-.. |Join the chat at https://gitter.im/python_birdseye/Lobby| image:: https://badges.gitter.im/python_birdseye/Lobby.svg
-   :target: https://gitter.im/python_birdseye/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+Database
+~~~~~~~~
 
-.. inclusion-end-marker
+#. Added a `Job` table to the tracking database to enable us to bundle together calculations into one **job**.  When running a profile, it will link all the individual calls to this **job** record.  It will create this job record if it does not already exist.
+   
 
-**Read more documentation** `here <http://birdseye.readthedocs.io>`_
+Using in practice
+-----------------
+
+*  Explicitly use the `BIRDSEYE_DB` environment variable to direct tracking traffic to the right database.  If this is not done then anyone running it will send the tracking to a new database that is created in their personal home folder.
+
+
