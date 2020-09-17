@@ -41,7 +41,9 @@
             <p><strong>No arguments</strong></p>
         {% endif %}
     {% endif %}
-
+    <p>
+        <strong>Job name:</strong> {{ call.job.job_name }}
+    </p>
     <p>
         <strong>Start time:</strong> {{ call.pretty_start_time }}
     </p>
