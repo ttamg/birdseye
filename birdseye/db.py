@@ -104,7 +104,7 @@ class Database(object):
             """ New table added to store a common job """
 
             id = Column(Integer, primary_key=True)
-            name = Column(Text, unique=True)
+            job_name = Column(Text, unique=True)
 
         class Call(Base):
             id = Column(String(length=32), primary_key=True)

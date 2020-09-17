@@ -696,11 +696,11 @@ class BirdsEye(TreeTracerBase):
 
         with self.db.session_scope() as session:
             db_job = one_or_none(
-                session.query(Job).filter_by(name=name)
+                session.query(Job).filter_by(job_name=name)
             )  # type: Optional[Function]
             if not db_job:
                 db_job = Job(
-                    name=name,
+                    job_name=name,
                 )
                 session.add(db_job)
                 session.commit()  # ensure .id exists

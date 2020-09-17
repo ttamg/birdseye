@@ -159,7 +159,7 @@ def latest_call(session, path, func_name):
 
 def get_calls(session, path, func_name, limit):
     return (
-        session.query(*(Call.basic_columns + Function.basic_columns))
+        session.query(*(Call.basic_columns + Function.basic_columns + (Job.job_name,)))
         .join(Function)
         .filter_by(file=path, name=func_name)
         .order_by(Call.start_time.desc())[:limit]
