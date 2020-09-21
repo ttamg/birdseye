@@ -97,7 +97,7 @@ def index(session):
 
 @app.route("/job/<id>")
 @db.provide_session
-def job_view(session, id):
+def job_view(session, id, limit=1000):
 
     # Get all calls and functions in this file
     filtered_calls = (
@@ -106,6 +106,7 @@ def job_view(session, id):
         .join(Function, Function.id == Call.function_id)
         .filter(Job.id == id, Function.type == "function")
         .order_by(Call.start_time)
+        .limit(limit)
     )
     job = session.query(Job).get(id)
 
@@ -214,7 +215,7 @@ def file_view(session, path):
 @db.provide_session
 def func_view(session, path, func_name):
     path = fix_abs_path(path)
-    calls = get_calls(session, path, func_name, 200)
+    calls = get_calls(session, path, func_name, 1000)
     func = session.query(Function).filter_by(file=path, name=func_name)[0]
 
     # if query:

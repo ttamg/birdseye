@@ -2,7 +2,7 @@ import os
 
 # Environment variables set here when imported
 os.environ["BIRDSEYE_DB"] = "/Users/matt/Projects/birdseye/.bird.sqlite"
-os.environ["BIRDSEYE_JOB"] = "Test Job 5"
+os.environ["BIRDSEYE_JOB"] = "Test Job 6"
 os.environ["BIRDSEYE_ENABLED"] = "True"
 
 from birdseye import eye
@@ -13,7 +13,7 @@ from test_scripts.die_roll import roll_the_dice
 def main():
     """ Demo example to run """
 
-    rolls = 4
+    rolls = 600
     sides = 6
     result1 = roll_the_dice(rolls=rolls, sides=sides)
 
