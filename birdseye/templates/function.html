@@ -55,7 +55,7 @@ most recent function object #} {% if calls %}
     {% for call in calls %}
     <tr data-id="{{ call.id }}" class="call-row">
       <td>{{ call.state_icon }}</td>
-      <td>{{ call.job_name }}</td>
+      <td>{{ call.job.job_name }}</td>
       <td>{{ call.pretty_start_time }}</td>
 
       {% if typ == 'function' %}

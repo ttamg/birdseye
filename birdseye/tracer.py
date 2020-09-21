@@ -19,11 +19,30 @@ from collections import namedtuple, defaultdict
 from copy import deepcopy
 from functools import partial, update_wrapper, wraps
 from itertools import takewhile
-from typing import List, Dict, Any, Optional, NamedTuple, Tuple, Iterator, Callable, cast, Union
+from typing import (
+    List,
+    Dict,
+    Any,
+    Optional,
+    NamedTuple,
+    Tuple,
+    Iterator,
+    Callable,
+    cast,
+    Union,
+)
 from types import FrameType, TracebackType, CodeType, FunctionType
 
-from birdseye.utils import PY3, Type, is_lambda, lru_cache, read_source_file, is_ipython_cell, \
-    is_future_import, PYPY
+from birdseye.utils import (
+    PY3,
+    Type,
+    is_lambda,
+    lru_cache,
+    read_source_file,
+    is_ipython_cell,
+    is_future_import,
+    PYPY,
+)
 
 
 class TracedFile(object):
@@ -45,7 +64,9 @@ class TracedFile(object):
     def __init__(self, tracer, source, filename, flags):
         # type: (TreeTracerBase, str, str, int) -> None
         # Here the source code is parsed, modified, and compiled
-        self.root = compile(source, filename, 'exec', ast.PyCF_ONLY_AST | flags, dont_inherit=True)  # type: ast.Module
+        self.root = compile(
+            source, filename, "exec", ast.PyCF_ONLY_AST | flags, dont_inherit=True
+        )  # type: ast.Module
 
         self.nodes = []  # type: List[ast.AST]
 
@@ -61,7 +82,9 @@ class TracedFile(object):
         new_root = deepcopy(self.root)
         new_root = _NodeVisitor().visit(new_root)
 
-        self.code = compile(new_root, filename, "exec", dont_inherit=True, flags=flags)  # type: CodeType
+        self.code = compile(
+            new_root, filename, "exec", dont_inherit=True, flags=flags
+        )  # type: CodeType
         self.tracer = tracer
         self.source = source
         self.filename = filename
@@ -78,7 +101,7 @@ class TracedFile(object):
         # to be ignored by the AST transformer
         for i, stmt in enumerate(self.root.body):
             if is_future_import(stmt):
-                for s in self.root.body[:i + 1]:
+                for s in self.root.body[: i + 1]:
                     for node in ast.walk(s):
                         node._visit_ignore = True
 
@@ -96,6 +119,7 @@ class FrameInfo(object):
     Contains extra data about an execution frame.
     Can be obtained from the stack attribute of a TreeTracerBase instance
     """
+
     def __init__(self):
         # Stack of statements currently being executed
         self.statement_stack = []  # type: List[ast.stmt]
@@ -125,47 +149,44 @@ class FrameInfo(object):
 
 
 # Argument of TreeTracerBase.enter_call
-EnterCallInfo = NamedTuple('EnterCallInfo', [
-
-    # Node  from where the call was made
-    ('call_node', Optional[Union[ast.expr, ast.stmt]]),
-
-    # Node where the call begins
-    ('enter_node', ast.AST),
-
-    # Frame from which the call was made
-    ('caller_frame', FrameType),
-
-    # Frame of the call
-    ('current_frame', FrameType)])
+EnterCallInfo = NamedTuple(
+    "EnterCallInfo",
+    [
+        # Node  from where the call was made
+        ("call_node", Optional[Union[ast.expr, ast.stmt]]),
+        # Node where the call begins
+        ("enter_node", ast.AST),
+        # Frame from which the call was made
+        ("caller_frame", FrameType),
+        # Frame of the call
+        ("current_frame", FrameType),
+    ],
+)
 
 # Argument of TreeTracerBase.exit_call
-ExitCallInfo = NamedTuple('ExitCallInfo', [
-
-    # Node  from where the call was made
-    ('call_node', Optional[Union[ast.expr, ast.stmt]]),
-
-    # Node where the call explicitly returned
-    ('return_node', Optional[ast.Return]),
-
-    # Frame from which the call was made
-    ('caller_frame', FrameType),
-
-    # Frame of the call
-    ('current_frame', FrameType),
-
-    # Node where the call explicitly returned
-    ('return_value', Any),
-
-    # Exception raised in the call causing it to end,
-    # will propagate to the caller
-    ('exc_value', Optional[Exception]),
-
-    # Traceback corresponding to exc_value
-    ('exc_tb', Optional[TracebackType])])
+ExitCallInfo = NamedTuple(
+    "ExitCallInfo",
+    [
+        # Node  from where the call was made
+        ("call_node", Optional[Union[ast.expr, ast.stmt]]),
+        # Node where the call explicitly returned
+        ("return_node", Optional[ast.Return]),
+        # Frame from which the call was made
+        ("caller_frame", FrameType),
+        # Frame of the call
+        ("current_frame", FrameType),
+        # Node where the call explicitly returned
+        ("return_value", Any),
+        # Exception raised in the call causing it to end,
+        # will propagate to the caller
+        ("exc_value", Optional[Exception]),
+        # Traceback corresponding to exc_value
+        ("exc_tb", Optional[TracebackType]),
+    ],
+)
 
 # see TreeTracerBase.after_expr
-ChangeValue = namedtuple('ChangeValue', 'value')
+ChangeValue = namedtuple("ChangeValue", "value")
 
 
 class TreeTracerBase(object):
@@ -190,12 +211,14 @@ class TreeTracerBase(object):
 
     def _trace_methods_dict(self, traced_file):
         # type: (TracedFile) -> Dict[str, Callable]
-        return {f.__name__: partial(f, traced_file)
-                for f in [
-                    self._treetrace_hidden_with_stmt,
-                    self._treetrace_hidden_before_expr,
-                    self._treetrace_hidden_after_expr,
-                ]}
+        return {
+            f.__name__: partial(f, traced_file)
+            for f in [
+                self._treetrace_hidden_with_stmt,
+                self._treetrace_hidden_before_expr,
+                self._treetrace_hidden_after_expr,
+            ]
+        }
 
     def trace_function(self, func):
         # type: (FunctionType) -> FunctionType
@@ -204,18 +227,20 @@ class TreeTracerBase(object):
         trigger the tracing hooks.
         """
         if not isinstance(func, FunctionType):
-            raise ValueError('You can only trace user-defined functions. '
-                             'The birdseye decorator must be applied first, '
-                             'at the bottom of the list.')
+            raise ValueError(
+                "You can only trace user-defined functions. "
+                "The birdseye decorator must be applied first, "
+                "at the bottom of the list."
+            )
 
         try:
             if inspect.iscoroutinefunction(func) or inspect.isasyncgenfunction(func):
-                raise ValueError('You cannot trace async functions')
+                raise ValueError("You cannot trace async functions")
         except AttributeError:
             pass
 
         if is_lambda(func):
-            raise ValueError('You cannot trace lambdas')
+            raise ValueError("You cannot trace lambdas")
 
         filename = inspect.getsourcefile(func)  # type: str
 
@@ -225,7 +250,7 @@ class TreeTracerBase(object):
             import linecache
 
             flags = get_ipython().compile.flags
-            source = ''.join(linecache.cache[filename][2])
+            source = "".join(linecache.cache[filename][2])
         else:
             source = read_source_file(filename)
             flags = 0
@@ -236,8 +261,10 @@ class TreeTracerBase(object):
         traced_file = self.compile(source, filename, flags)
 
         if func.__dict__:
-            raise ValueError('The birdseye decorator must be applied first, '
-                             'at the bottom of the list.')
+            raise ValueError(
+                "The birdseye decorator must be applied first, "
+                "at the bottom of the list."
+            )
 
         # Then we have to recursively search through the newly compiled
         # code to find the code we actually want corresponding to this function
@@ -248,8 +275,10 @@ class TreeTracerBase(object):
             for const in root_code.co_consts:  # type: CodeType
                 if not inspect.iscode(const):
                     continue
-                matches = (const.co_firstlineno == func.__code__.co_firstlineno and
-                           const.co_name == func.__code__.co_name)
+                matches = (
+                    const.co_firstlineno == func.__code__.co_firstlineno
+                    and const.co_name == func.__code__.co_name
+                )
                 if matches:
                     code_options.append(const)
                 find_code(const)
@@ -269,34 +298,38 @@ class TreeTracerBase(object):
 
         # http://stackoverflow.com/a/13503277/2482744
         # noinspection PyArgumentList
-        new_func = FunctionType(new_func_code, func.__globals__, func.__name__, func.__defaults__, func.__closure__)
+        new_func = FunctionType(
+            new_func_code,
+            func.__globals__,
+            func.__name__,
+            func.__defaults__,
+            func.__closure__,
+        )
         update_wrapper(new_func, func)  # type: FunctionType
         if PY3:
-            new_func.__kwdefaults__ = getattr(func, '__kwdefaults__', None)
+            new_func.__kwdefaults__ = getattr(func, "__kwdefaults__", None)
         new_func.traced_file = traced_file
         return new_func
 
-    def __call__(self, func=None, optional=False):
+    def __call__(self, func=None, enabled=False):
         # type: (FunctionType, bool) -> Callable
         """
         Decorator which returns a (possibly optionally) traced function.
         This decorator can be called with or without arguments.
         Typically it is called without arguments, in which case it returns
         a traced function.
-        If optional=True, it returns a function similar to the original
-        but with an additional optional parameter trace_call, default False.
-        If trace_call is false, the underlying untraced function is used.
-        If true, the traced version is used.
+        If enabled=True, then the tracing is included
+        If enabled=False, the underlying untraced function is used.
         """
         if inspect.isclass(func):
-            raise TypeError('Decorating classes is no longer supported')
+            raise TypeError("Decorating classes is no longer supported")
 
         if func:
             # The decorator has been called without arguments/parentheses,
             # e.g.
             # @eye
-            # def ...
-            return self.trace_function(func)
+            # By default it is not switched on
+            return func
 
         # The decorator has been called with arguments/parentheses,
         # e.g.
@@ -304,25 +337,19 @@ class TreeTracerBase(object):
         # def ...
         # We must return a decorator
 
-        if not optional:
+        if enabled is True or enabled == "True":
             return self.trace_function
 
-        def decorator(actual_func):
+        else:  # Not enabled.  Return decorated normal function.
 
-            traced = self.trace_function(actual_func)
+            def decorator(actual_func):
+                @wraps(actual_func)
+                def wrapper(*args, **kwargs):
+                    return actual_func(*args, **kwargs)
 
-            @wraps(actual_func)
-            def wrapper(*args, **kwargs):
-                trace_call = kwargs.pop('trace_call', False)
-                if trace_call:
-                    f = traced
-                else:
-                    f = actual_func
-                return f(*args, **kwargs)
+                return wrapper
 
-            return wrapper
-
-        return decorator
+            return decorator
 
     def _main_frame(self, node):
         # type: (ast.AST) -> Optional[FrameType]
@@ -333,7 +360,7 @@ class TreeTracerBase(object):
 
         original_frame = frame
 
-        while frame.f_code.co_name in ('<listcomp>', '<dictcomp>', '<setcomp>'):
+        while frame.f_code.co_name in ("<listcomp>", "<dictcomp>", "<setcomp>"):
             frame = frame.f_back
 
         for node in ancestors(node):
@@ -343,7 +370,7 @@ class TreeTracerBase(object):
             if isinstance(node, ast.ClassDef):
                 frame = frame.f_back
 
-        if frame.f_code.co_name in ('<lambda>', '<genexpr>'):
+        if frame.f_code.co_name in ("<lambda>", "<genexpr>"):
             return None
 
         self.secondary_to_main_frames[original_frame] = frame
@@ -394,7 +421,9 @@ class TreeTracerBase(object):
 
         result = self._after_expr(node, frame, value, None, None)
         if result is not None:
-            assert isinstance(result, ChangeValue), "after_expr must return None or an instance of ChangeValue"
+            assert isinstance(
+                result, ChangeValue
+            ), "after_expr must return None or an instance of ChangeValue"
             value = result.value
         return value
 
@@ -408,7 +437,9 @@ class TreeTracerBase(object):
         # type: (ast.AST, FrameType) -> None
         caller_frame, call_node = self._get_caller_stuff(current_frame)
         self.stack[current_frame] = FrameInfo()
-        self.enter_call(EnterCallInfo(call_node, enter_node, caller_frame, current_frame))
+        self.enter_call(
+            EnterCallInfo(call_node, enter_node, caller_frame, current_frame)
+        )
 
     def _get_caller_stuff(self, frame):
         # type: (FrameType) -> Tuple[FrameType, Optional[Union[ast.expr, ast.stmt]]]
@@ -493,10 +524,12 @@ class _NodeVisitor(ast.NodeTransformer):
 
     def generic_visit(self, node):
         # type: (ast.AST) -> ast.AST
-        if not getattr(node, '_visit_ignore', False):
-            if (isinstance(node, ast.expr) and
-                    not (hasattr(node, "ctx") and not isinstance(node.ctx, ast.Load)) and
-                    not isinstance(node, getattr(ast, 'Starred', ()))):
+        if not getattr(node, "_visit_ignore", False):
+            if (
+                isinstance(node, ast.expr)
+                and not (hasattr(node, "ctx") and not isinstance(node.ctx, ast.Load))
+                and not isinstance(node, getattr(ast, "Starred", ()))
+            ):
                 return self.visit_expr(node)
             if isinstance(node, ast.stmt):
                 return self.visit_stmt(node)
@@ -512,12 +545,15 @@ class _NodeVisitor(ast.NodeTransformer):
         TreeTracerBase and traced_file arguments already filled in (see _trace_methods_dict)
         """
 
-        before_marker = self._create_simple_marker_call(node, TreeTracerBase._treetrace_hidden_before_expr)
+        before_marker = self._create_simple_marker_call(
+            node, TreeTracerBase._treetrace_hidden_before_expr
+        )
         ast.copy_location(before_marker, node)
 
         after_marker = ast.Call(
-            func=ast.Name(id=TreeTracerBase._treetrace_hidden_after_expr.__name__,
-                          ctx=ast.Load()),
+            func=ast.Name(
+                id=TreeTracerBase._treetrace_hidden_after_expr.__name__, ctx=ast.Load()
+            ),
             args=[
                 before_marker,
                 super(_NodeVisitor, self).generic_visit(node),
@@ -542,7 +578,8 @@ class _NodeVisitor(ast.NodeTransformer):
         """
         context_expr = self._create_simple_marker_call(
             super(_NodeVisitor, self).generic_visit(node),
-            TreeTracerBase._treetrace_hidden_with_stmt)
+            TreeTracerBase._treetrace_hidden_with_stmt,
+        )
 
         if PY3:
             wrapped = ast.With(
@@ -567,15 +604,14 @@ class _NodeVisitor(ast.NodeTransformer):
         to be retrieved later through the nodes attribute of a TracedFile.
         """
         return ast.Call(
-            func=ast.Name(id=func.__name__,
-                          ctx=ast.Load()),
+            func=ast.Name(id=func.__name__, ctx=ast.Load()),
             args=[ast.Num(node._tree_index)],
             keywords=[],
         )
 
 
 class _StmtContext(object):
-    __slots__ = ('tracer', 'node', 'frame')
+    __slots__ = ("tracer", "node", "frame")
 
     def __init__(self, tracer, node, frame):
         # type: (TreeTracerBase, ast.stmt, FrameType) -> None
@@ -587,7 +623,7 @@ class _StmtContext(object):
         tracer = self.tracer
         node = self.node
         frame = self.frame
-        if getattr(node, '_enter_call_node', False):
+        if getattr(node, "_enter_call_node", False):
             tracer._enter_call(node, frame)
         frame_info = tracer.stack[frame]
         frame_info.expression_stack = []
@@ -621,23 +657,25 @@ class _StmtContext(object):
 
         parent = node.parent  # type: ast.AST
         return_node = frame_info.return_node
-        exiting = (isinstance(parent, (ast.FunctionDef, ast.Module)) and
-                   (node is parent.body[-1] or
-                    exc_val or
-                    return_node))
+        exiting = isinstance(parent, (ast.FunctionDef, ast.Module)) and (
+            node is parent.body[-1] or exc_val or return_node
+        )
         if exiting:
             caller_frame, call_node = tracer._get_caller_stuff(frame)
             return_value = None
             if return_node and return_node.value and not exc_val:
                 return_value = frame_info.expression_values[return_node.value]
-            tracer.exit_call(ExitCallInfo(call_node,
-                                          return_node,
-                                          caller_frame,
-                                          frame,
-                                          return_value,
-                                          exc_val,
-                                          exc_tb
-                                          ))
+            tracer.exit_call(
+                ExitCallInfo(
+                    call_node,
+                    return_node,
+                    caller_frame,
+                    frame,
+                    return_value,
+                    exc_val,
+                    exc_tb,
+                )
+            )
 
             del tracer.stack[frame]
             for secondary_frame in self.tracer.main_to_secondary_frames.pop(frame):
@@ -682,17 +720,20 @@ def loops(node):
         if isinstance(parent, ast.FunctionDef):
             break
 
-        is_containing_loop = (((isinstance(parent, ast.For) and parent.iter is not node or
-                                isinstance(parent, ast.While))
-                               and node not in parent.orelse) or
-                              (isinstance(parent, ast.comprehension) and node in parent.ifs))
+        is_containing_loop = (
+            (
+                isinstance(parent, ast.For)
+                and parent.iter is not node
+                or isinstance(parent, ast.While)
+            )
+            and node not in parent.orelse
+        ) or (isinstance(parent, ast.comprehension) and node in parent.ifs)
         if is_containing_loop:
             result.append(parent)
 
-        elif isinstance(parent, (ast.ListComp,
-                                 ast.GeneratorExp,
-                                 ast.DictComp,
-                                 ast.SetComp)):
+        elif isinstance(
+            parent, (ast.ListComp, ast.GeneratorExp, ast.DictComp, ast.SetComp)
+        ):
             generators = parent.generators
             if node in generators:
                 generators = list(takewhile(lambda n: n != node, generators))

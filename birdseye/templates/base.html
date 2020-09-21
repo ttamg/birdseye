@@ -22,23 +22,24 @@
   <body>
     {% block whole_body %}
     <div class="container">
-      <a href="{{ url_for('index') }}">
-        <h1>
-          <img
-            height="75px"
-            src="{{ url_for('static', filename='img/quantco_logo.png') }}"
-          />
-          Calculation Profiler
-        </h1>
-      </a>
-      <p>
-        <small
-          >A fork of
-          <a href="https://github.com/alexmojaki/birdseye">Birdseye</a></small
-        >
-      </p>
+      
+      <h1>
+        <a href="{{ url_for('index') }}">
+        <img
+          height="75px"
+          src="{{ url_for('static', filename='img/quantco_logo.png') }}"
+        />
+        Calculation Profiler - 
+        </a>
+        <small class="muted">
+          A fork of <a href="https://github.com/alexmojaki/birdseye">Birdseye</a>
+        </small>
+      </h1>
+
       <hr />
+
       {% block body %}{% endblock %}
+      
     </div>
     {% block after_container %} {% endblock %} {% endblock %}
   </body>

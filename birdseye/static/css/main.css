@@ -233,3 +233,7 @@ table.dataframe td.numeric {
         transform: scale(1);
     }
 }
+
+.muted {
+    color: #aaa;
+}

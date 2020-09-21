@@ -1,7 +1,7 @@
 import sys
 from importlib import import_module
 
-__version__ = '0.8.4'
+__version__ = "0.8.4"
 
 
 # birdseye has so many dependencies that simply importing them can be quite slow
@@ -12,9 +12,10 @@ __version__ = '0.8.4'
 # is a lazy version of
 #     from birdseye.bird import eye
 
+
 class _SimpleProxy(object):
     def __init__(self, val):
-        object.__setattr__(self, '_SimpleProxy__val', val)
+        object.__setattr__(self, "_SimpleProxy__val", val)
 
     def __call__(self, *args, **kwargs):
         return self.__val()(*args, **kwargs)
@@ -26,12 +27,13 @@ class _SimpleProxy(object):
         setattr(self.__val(), key, value)
 
 
-eye = _SimpleProxy(lambda: import_module('birdseye.bird').eye)
-BirdsEye = _SimpleProxy(lambda: import_module('birdseye.bird').BirdsEye)
+eye = _SimpleProxy(lambda: import_module("birdseye.bird").eye)
+BirdsEye = _SimpleProxy(lambda: import_module("birdseye.bird").BirdsEye)
 
 
 def load_ipython_extension(ipython_shell):
     from birdseye.ipython import BirdsEyeMagics
+
     ipython_shell.register_magics(BirdsEyeMagics)
 
 

@@ -105,10 +105,15 @@ class Database(object):
 
             id = Column(Integer, primary_key=True)
             job_name = Column(Text, unique=True)
+            # calls = relationship("Call", cascade="all,delete", backref="job")
 
         class Call(Base):
             id = Column(String(length=32), primary_key=True)
-            function_id = Column(Integer, ForeignKey("function.id"), index=True)
+            function_id = Column(
+                Integer,
+                ForeignKey("function.id"),
+                index=True,
+            )
             function = relationship(
                 "Function", backref=backref("calls", lazy="dynamic")
             )
@@ -118,8 +123,13 @@ class Database(object):
             traceback = Column(Text)
             data = Column(LongText)
             start_time = Column(DateTime, index=True)
-            job_id = Column(Integer, ForeignKey("job.id"), index=True)
-            job = relationship("Job", backref=backref("calls", lazy="dynamic"))
+            job_id = Column(
+                Integer, ForeignKey(Job.id, ondelete="CASCADE"), nullable=True
+            )
+            job = relationship(
+                "Job",
+                backref=backref("calls", lazy="dynamic", cascade="all,delete"),
+            )
 
             @property
             def pretty_start_time(self):

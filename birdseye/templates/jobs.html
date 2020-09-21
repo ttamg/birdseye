@@ -1,0 +1,59 @@
+{% extends "base.html" %} 
+
+{% block body %} 
+<script>
+  var job_url = "{{ url_for('job_view', id='') }}";
+  $(function () {
+    $(".job-row").each(function (i, row) {
+      $(row)
+        .find("td")
+        .wrapInner(
+          "<a href='" +
+            job_url +
+            row.dataset.id +
+            (i > 0 ? "?not-newest=1" : "") +
+            "'></a>"
+        );
+    });
+  });
+</script>
+
+{% from 'info_panel.html' import info_panel %} 
+{% call info_panel() %} 
+  {% if jobs %}
+    <div>
+      Click on a Profile Job to view the function calls, in the order that they were called.
+    </div>
+    <div>
+      Note that only the functions with the @eye decorator (or full modules), are included.
+  </div>
+  {% else %}
+    <div>No data - You haven't traced any calculations yet!</div>
+  {% endif %} 
+{% endcall %}
+
+<h4>Jobs</h4>
+
+<table style="width: 100%" class="table table-hover table-bordered table-striped">
+  <tr>
+    <th>Job name</th>
+    <th>Function call count</th>
+    <th>Timestamp</th>
+  </tr>
+  {% for job in jobs %}
+  <tr data-id="{{ job.id }}" class="job-row">
+    <td>
+      <i class="glyphicon glyphicon-play"></i>
+      {{ job.job_name }}
+    </td>
+    <td>
+      {{ job.call_count }}
+    </td>
+    <td>
+      {{ job.timestamp }}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}

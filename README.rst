@@ -26,7 +26,7 @@ Key modifications in this fork
 
 *   Adding the concept of a call tree to show visually which functions call other functions.  Uses indentation to make the call stack hierarchy more understandable to the user.
 
-*   Made Tracing always optional and by default OFF so that to get a trace to work you need to set the `trace_call=True` parameter on the `@eye` decorator.
+*   Made Tracing always optional and by default OFF so that to get a trace to work you need to set the ``enabled=True`` parameter on the ``@eye`` decorator.
 
 
 Getting started
@@ -60,7 +60,7 @@ Your first calculation trace
 
 To include functions in the calculation trace add the ``@eye`` decorator to each of these functions.
 
-The tracing of runs will only run when the ``trace_call`` parameters is passed with ``True`` value.  To do this and link globally to the environment variables, use ``@eye(trace_call=os.environ['BIRDSEYE_ENABLED'])``.
+The tracing of runs will only run when the ``enabled`` parameter is passed with ``True`` value.  To do this and link globally to the environment variables, use ``@eye(enabled=os.environ['BIRDSEYE_ENABLED'])``.
 
 .. code-block:: python 
 
@@ -69,12 +69,12 @@ The tracing of runs will only run when the ``trace_call`` parameters is passed w
     
     ...
 
-    @eye(trace_call=os.environ['BIRDSEYE_ENABLED'])
+    @eye(enabled=os.environ['BIRDSEYE_ENABLED'])
     def my_function_to_track():
         ...
         return something
     
-When you run code, and a function with the decorator is called, AND the trace_call is True, then it will write all calls to the Birdseye Database.
+When you run code, and a function with the decorator is called, AND the ``enabled`` is True, then it will write all calls to the Birdseye Database.
 
 Note that this can get very slow with big complex calcluations.
 
@@ -126,7 +126,7 @@ Packaging - we are deploying this fork using the wheel file.  To create the pack
 
         python setup.py bdist_wheel
 
-3.  Deploy the Wheel file from the **dist** folder using
+3.  Deploy the Wheel file from the **dist** folder.  Install directly using pip or conda:
 
 .. code-block::
 

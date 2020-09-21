@@ -44,30 +44,113 @@ Call = db.Call
 Job = db.Job
 
 
+# # @app.route("/")
+# @db.provide_session
+# def index(session):
+#     all_paths = db.all_file_paths()
+
+#     recent_calls = (
+#         session.query(*(Call.basic_columns + Function.basic_columns))
+#         .join(Function)
+#         .order_by(Call.start_time.desc())[:100]
+#     )
+
+#     files = OrderedDict()
+
+#     for row in recent_calls:
+#         if is_ipython_cell(row.file):
+#             continue
+#         files.setdefault(row.file, OrderedDict()).setdefault(row.name, row)
+
+#     for path in all_paths:
+#         files.setdefault(path, OrderedDict())
+
+#     short = partial(short_path, all_paths=all_paths)
+
+#     return render_template("index.html", short=short, files=files)
+
+
 @app.route("/")
 @db.provide_session
 def index(session):
-    all_paths = db.all_file_paths()
-
-    recent_calls = (
-        session.query(*(Call.basic_columns + Function.basic_columns))
-        .join(Function)
-        .order_by(Call.start_time.desc())[:100]
+    """ A new view with overview of the jobs saved """
+    call_summary = (
+        session.query(
+            Call.job_id,
+            sqlalchemy.func.count("*").label("call_count"),
+            sqlalchemy.func.max(Call.start_time).label("timestamp"),
+        )
+        .group_by(Call.job_id)
+        .subquery()
     )
 
-    files = OrderedDict()
+    jobs = (
+        session.query(
+            Job.job_name, Job.id, call_summary.c.call_count, call_summary.c.timestamp
+        )
+        .outerjoin(call_summary, Job.id == call_summary.c.job_id)
+        .order_by(Job.job_name)
+    )
 
-    for row in recent_calls:
-        if is_ipython_cell(row.file):
-            continue
-        files.setdefault(row.file, OrderedDict()).setdefault(row.name, row)
+    return render_template("jobs.html", jobs=jobs)
 
-    for path in all_paths:
-        files.setdefault(path, OrderedDict())
 
-    short = partial(short_path, all_paths=all_paths)
+@app.route("/job/<id>")
+@db.provide_session
+def job_view(session, id):
 
-    return render_template("index.html", short=short, files=files)
+    # Get all calls and functions in this file
+    filtered_calls = (
+        session.query(Call)
+        .join(Job, Job.id == Call.job_id)
+        .join(Function, Function.id == Call.function_id)
+        .filter(Job.id == id, Function.type == "function")
+        .order_by(Call.start_time)
+    )
+    job = session.query(Job).get(id)
+
+    # Parse the calls to display call tree
+    calls = []
+    heirarchy = {
+        0: 1,
+    }
+    level = 0
+    for call in filtered_calls:
+
+        inner_call_count = call.data.count("inner_call")
+        calls.append(
+            {
+                "id": call.id,
+                "function_name": call.function.name,
+                "file_name": call.function.file,
+                "arguments_list": call.arguments_list,
+                "result": call.result,
+                "inner_call_count": inner_call_count,
+                "level": level,
+            }
+        )
+
+        # Log this call
+        heirarchy[level] -= 1
+
+        if inner_call_count:  # Next calls will go one deeper
+            level += 1
+            heirarchy[level] = heirarchy.get(level, 0) + inner_call_count
+
+        # Go up levels
+        else:
+            while heirarchy.get(level, 0) == 0 and level >= 0:
+                level -= 1
+
+        # Error checking
+        if level < 0:
+            level = 0
+
+    return render_template(
+        "job.html",
+        job=job,
+        calls=calls,
+    )
 
 
 @app.route("/file/<file:path>")
@@ -131,13 +214,15 @@ def file_view(session, path):
 @db.provide_session
 def func_view(session, path, func_name):
     path = fix_abs_path(path)
-    query = get_calls(session, path, func_name, 200)
-    if query:
-        func = query[0]
-        calls = [withattrs(Call(), **row._asdict()) for row in query]
-    else:
-        func = session.query(Function).filter_by(file=path, name=func_name)[0]
-        calls = None
+    calls = get_calls(session, path, func_name, 200)
+    func = session.query(Function).filter_by(file=path, name=func_name)[0]
+
+    # if query:
+    #     func = query[0]
+    #     calls = [withattrs(Call(), **row._asdict()) for row in query]
+    # else:
+    #     func = session.query(Function).filter_by(file=path, name=func_name)[0]
+    #     calls = None
 
     return render_template(
         "function.html", func=func, short_path=basename(path), calls=calls
@@ -157,13 +242,27 @@ def latest_call(session, path, func_name):
     )
 
 
-def get_calls(session, path, func_name, limit):
-    return (
-        session.query(*(Call.basic_columns + Function.basic_columns + (Job.job_name,)))
-        .join(Function)
-        .filter_by(file=path, name=func_name)
+# def get_calls(session, path, func_name, limit):
+#     return (
+#         session.query(*(Call.basic_columns + Function.basic_columns + (Job.job_name,)))
+#         .join(Function)
+#         .filter_by(file=path, name=func_name)
+#         .order_by(Call.start_time.desc())[:limit]
+#     )
+
+
+def get_calls(session, path, func_name, limit, job_id=None):
+    subquery = (
+        session.query(Call)
+        .join(Function, Function.id == Call.function_id)
+        .join(Job, Job.id == Call.job_id)
+        .filter(Function.file == path, Function.name == func_name)
         .order_by(Call.start_time.desc())[:limit]
     )
+    if job_id is None:
+        return subquery
+    else:
+        return subquery.filter(Job.id == job_id)
 
 
 @db.provide_session

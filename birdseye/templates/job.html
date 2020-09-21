@@ -1,0 +1,85 @@
+{% extends "base.html" %} 
+{% block body %}
+<script>
+  var call_url = "{{ url_for('call_view', call_id='') }}";
+  $(function () {
+    $(".call-row").each(function (i, row) {
+      $(row)
+        .find("td")
+        .wrapInner(
+          "<a href='" +
+            call_url +
+            row.dataset.id +
+            (i > 0 ? "?not-newest=1" : "") +
+            "'></a>"
+        );
+    });
+  });
+</script>
+
+{% from 'info_panel.html' import info_panel %} 
+{% call info_panel() %} 
+  {% if calls %}
+    <div>
+      Table shows all the tracked functions in the order they were called.
+    </div>
+    <div>
+      Click on a function to explore the values, code and intermediate calculations.
+  </div>
+  {% else %}
+    <div>No data - There are no function calls logged under this job!</div>
+  {% endif %} 
+{% endcall %}
+
+<h2>
+  {{ job.job_name }}
+  <small class="muted">
+    Call tree
+  </small>
+</h2>
+
+<br />
+
+{% if calls %}
+  <table style="width: 100%" class="table table-hover table-bordered table-striped">
+    <tr>
+      <th>Step</th>
+      <th>Function calls</th>
+      <th>Arguments passed in</th>
+      <th>Result returned</th>
+    </tr>
+    {% for call in calls %}
+      <tr data-id="{{ call.id }}" class="call-row">
+        <td>
+          {{ loop.index }}
+        </td>
+        <td>
+            {% for i in range(call.level) %}
+              <i class="glyphicon glyphicon-minus"></i>
+            {% endfor %}
+            <i class="glyphicon glyphicon-play"></i>
+            <strong>{{ call.function_name }}</strong>
+            <small class="muted"> - {{ call.file_name }}</small>
+        </td>
+        <td>
+          {
+          {% for k, v in call.arguments_list %}
+            <span> 
+              {{ k }}: {{ v }}, 
+            </span>
+          {% endfor %}
+          }
+        </td>
+        <td>
+          {{ call.result }}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p>No calls to display!</p>
+{% endif %} 
+
+
+
+{% endblock %}

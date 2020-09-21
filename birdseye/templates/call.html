@@ -3,6 +3,13 @@
 
     {% set typ = func.type %}
 
+    <div>
+        <a href="{{ url_for('job_view', id=call.job.id) }}">
+            <i class="glyphicon glyphicon-chevron-left"></i>
+            <strong>{{ call.job.job_name }}</strong> 
+        </a>
+    </div>
+
     <h2>
         {% if typ == 'module' %}
             Execution of module:
@@ -20,16 +27,17 @@
         </a>
     </h2>
 
-    {% if typ == 'function' %}
-        <p><strong>Line: </strong>{{ func.lineno }}</p>
-    {% endif %}
-
-    <p><strong>Full file path: </strong><a href="{{ url_for('file_view', path=func.file) }}">{{ func.file }}</a></p>
-
+    <p>
+        <strong>Source:</strong> {{ func.file }}
+            {% if typ == 'function' %}
+                (line {{ func.lineno }})
+            {% endif %}
+    </p>
+   
     {% if typ == 'function' %}
         {% if call.arguments_list %}
             <p><strong>Arguments:</strong></p>
-            <table class="code-font table table-bordered table-striped args-table">
+            <table class="code-font table table-bordered args-table">
                 {% for k, v in call.arguments_list %}
                     <tr>
                         <td>{{ k }}</td>
@@ -41,70 +49,23 @@
             <p><strong>No arguments</strong></p>
         {% endif %}
     {% endif %}
-    <p>
-        <strong>Job name:</strong> {{ call.job.job_name }}
-    </p>
-    <p>
-        <strong>Start time:</strong> {{ call.pretty_start_time }}
-    </p>
+
     <p><strong>Result:</strong>
         {% if call.success %}
-            <span class="code-font">{{ call.result }}</span></p>
+            <table class="code-font table table-bordered args-table">
+                    <tr>
+                        <td>{{ call.result }}</td>
+                    </tr>
+            </table>
         {% else %}
             </p>
             <pre>{{ call.traceback }}</pre>
         {% endif %}
-    <p><strong>Code:</strong></p>
 
     {% from 'info_panel.html' import info_panel %}
 
-    <div id="new-call">
-        {% call info_panel() %}
-            <a id="new-call-link" href="#">
-                <i class="glyphicon glyphicon-play-circle"></i> Go to newest call
-            </a>
-        {% endcall %}
-    </div>
-
-    <script>
-        (function () {
-            var shown = false;
-            var notNewest = location.search.indexOf('not-newest=1') >= 0;
-
-            function checkLatest() {
-                $.get(
-                    "{{ url_for('latest_call', path=func.file, func_name=func.name) }}"
-                ).done(function (data) {
-                    if (data.url === location.pathname) {
-                        return;
-                    }
-                    $('#new-call').show();
-                    $('#new-call-link').attr('href', data.url);
-
-                    if (shown || notNewest) {
-                        return;
-                    }
-                    shown = true;
-
-                    function bounce() {
-                        $('#new-call').toggleClass('animate', true);
-                    }
-
-                    if (document.hasFocus()) {
-                        bounce();
-                    } else {
-                        window.addEventListener('focus', bounce, false);
-                    }
-                });
-            }
-
-            $(function () {
-                checkLatest();
-                setInterval(checkLatest, 1000);
-            });
-        })();
-    </script>
 {% endblock %}
+
 {% block after_container %}
     {% include "call_core.html" %}
 {% endblock %}

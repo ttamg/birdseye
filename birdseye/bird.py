@@ -139,10 +139,10 @@ class BirdsEye(TreeTracerBase):
                 pandas_cols=10,
             ),
         )
-        # Set Job name from JOB_NAME environment variable otherwise you an approximate timestamp
-        self.job_name = os.environ.get("JOB_NAME") or datetime.datetime.now().strftime(
-            "%Y-%m-%d %H:%M"
-        )
+        # Set Job name from BIRDSEYE_JOB environment variable otherwise you an approximate timestamp
+        self.job_name = os.environ.get(
+            "BIRDSEYE_JOB"
+        ) or datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
     @cached_property
     def db(self):
