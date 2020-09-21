@@ -92,7 +92,7 @@ def index(session):
         .order_by(Job.job_name)
     )
 
-    return render_template("jobs.html", jobs=jobs)
+    return render_template("jobs.html", jobs=jobs, count=jobs.count())
 
 
 @app.route("/job/<id>")

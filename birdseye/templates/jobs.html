@@ -20,7 +20,7 @@
 
 {% from 'info_panel.html' import info_panel %} 
 {% call info_panel() %} 
-  {% if jobs %}
+  {% if count %}
     <div>
       Click on a Profile Job to view the function calls, in the order that they were called.
     </div>
@@ -32,28 +32,32 @@
   {% endif %} 
 {% endcall %}
 
-<h4>Jobs</h4>
-
-<table style="width: 100%" class="table table-hover table-bordered table-striped">
-  <tr>
-    <th>Job name</th>
-    <th>Function call count</th>
-    <th>Timestamp</th>
-  </tr>
-  {% for job in jobs %}
-  <tr data-id="{{ job.id }}" class="job-row">
-    <td>
-      <i class="glyphicon glyphicon-play"></i>
-      {{ job.job_name }}
-    </td>
-    <td>
-      {{ job.call_count }}
-    </td>
-    <td>
-      {{ job.timestamp }}
-    </td>
-  </tr>
-  {% endfor %}
-</table>
+<h2>Jobs</h2>
+ 
+{% if count %}
+  <table style="width: 100%" class="table table-hover table-bordered table-striped">
+    <tr>
+      <th>Job name</th>
+      <th>Function call count</th>
+      <th>Timestamp</th>
+    </tr>
+    {% for job in jobs %}
+    <tr data-id="{{ job.id }}" class="job-row">
+      <td>
+        <i class="glyphicon glyphicon-play"></i>
+        {{ job.job_name }}
+      </td>
+      <td>
+        {{ job.call_count }}
+      </td>
+      <td>
+        {{ job.timestamp }}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p>None.</p>
+{% endif %}
 
 {% endblock %}
