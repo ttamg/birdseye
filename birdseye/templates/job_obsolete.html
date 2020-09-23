@@ -15,35 +15,6 @@
         );
     });
   });
-
-  // Show an element
-  var show = function (elem) {
-    // elem.style.display = 'inline-block';
-    elem.removeAttribute("style");
-  };
-
-  // Hide an element
-  var hide = function (elem) {
-    elem.style.display = 'none';
-  };
-
-  // Toggle element visibility
-  var toggle = function (elem) {
-    if (window.getComputedStyle(elem).display === 'none') {
-      show(elem);
-      return;
-    }
-    hide(elem);
-  };
-
-  // Toggle all functions
-  function toggle_all() {
-    
-    var elements = document.getElementsByClassName("drill-down");
-    for (var i=0; i < elements.length; i++) {
-      toggle(elements[i]);
-    }
-  }
 </script>
 
 {% from 'info_panel.html' import info_panel %} 
@@ -64,17 +35,18 @@
   {{ job.job_name }}
   <small class="muted">
     Call tree
-    <a onclick='toggle_all();'>(toggle details) </a>
   </small>
 </h2>
 
 <br />
 
 {% if calls %}
-  <table style="width: 100%" class="table table-hover table-bordered code-font">
+  <table style="width: 100%" class="table table-hover table-bordered table-striped">
     <tr>
       <th>Step</th>
       <th>Function calls</th>
+      <th>Arguments passed in</th>
+      <th>Result returned</th>
     </tr>
     {% for call in calls %}
       <tr data-id="{{ call.id }}" class="call-row">
@@ -89,23 +61,17 @@
             <strong>{{ call.function_name }}</strong>
             <small class="muted"> - {{ call.file_name }}</small>
         </td>
-      </tr>
-      {% for k, v in call.arguments_list %}
-      <tr data-id="{{ call.id }}" class="call-row drill-down bg-muted" style="display: none;">
-          <td>
-            Args ({{ k }})
-          </td>
-          <td>
-            <small class="qc-inspector-value">{{ v }}</small>
-          </td>
-        </tr>
-      {% endfor %}
-      <tr data-id="{{ call.id }}" class="call-row drill-down bg-muted" style="display: none;">
         <td>
-          Return value
+          {
+          {% for k, v in call.arguments_list %}
+            <span> 
+              {{ k }}: {{ v }}, 
+            </span>
+          {% endfor %}
+          }
         </td>
         <td>
-          <small class="qc-inspector-value">{{ call.result }}</small>
+            {{ call.result }}
         </td>
       </tr>
     {% endfor %}

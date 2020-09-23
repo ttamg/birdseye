@@ -22,7 +22,7 @@ def file_to_string(*path):
 # __version__ = re.search(r"__version__ = '([.\d]+)'", contents)
 
 # QC version
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 install_requires = [

@@ -237,3 +237,13 @@ table.dataframe td.numeric {
 .muted {
     color: #aaa;
 }
+
+.qc-inspector-value {
+    display: inline-block;
+    white-space: pre-wrap;
+    vertical-align: top;
+}
+
+.bg-muted {
+    background-color: #f6f6ff;
+}

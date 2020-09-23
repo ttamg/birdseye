@@ -41,7 +41,7 @@
                 {% for k, v in call.arguments_list %}
                     <tr>
                         <td>{{ k }}</td>
-                        <td>{{ v }}</td>
+                        <td><small class="qc-inspector-value">{{ v }}</small></td>
                     </tr>
                 {% endfor %}
             </table>
@@ -54,7 +54,7 @@
         {% if call.success %}
             <table class="code-font table table-bordered args-table">
                     <tr>
-                        <td>{{ call.result }}</td>
+                        <td><small class="qc-inspector-value">{{ call.result }}</small></td>
                     </tr>
             </table>
         {% else %}
