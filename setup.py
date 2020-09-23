@@ -5,6 +5,7 @@ import codecs
 
 from setuptools import setup
 
+import version
 
 package = "birdseye"
 dirname = os.path.dirname(__file__)
@@ -22,7 +23,7 @@ def file_to_string(*path):
 # __version__ = re.search(r"__version__ = '([.\d]+)'", contents)
 
 # QC version
-__version__ = "0.1.2"
+__version__ = version.__version__
 
 
 install_requires = [

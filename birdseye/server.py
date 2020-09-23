@@ -23,6 +23,8 @@ import sqlalchemy
 from birdseye.db import Database
 from birdseye.utils import short_path, IPYTHON_FILE_PATH, fix_abs_path, is_ipython_cell
 
+import version
+
 
 app = Flask("birdseye")
 app.jinja_env.auto_reload = True
@@ -368,6 +370,11 @@ def body_hashes_present(session):
         .group_by(Function.body_hash)
     )
     return DecentJSONEncoder().encode([dict(hash=h, count=count) for h, count in query])
+
+
+@app.context_processor
+def inject_version():
+    return dict(version=version.__version__)
 
 
 def main(argv=sys.argv[1:]):
