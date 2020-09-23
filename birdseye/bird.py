@@ -1136,7 +1136,7 @@ class NodeValue(object):
 
             indices = set(_sample_indices(num_cols, max_cols))
             for i, (formatted_name, label) in enumerate(
-                zip(val.columns.format(sparsify=False), val.columns)
+                zip(val.columns.format(), val.columns)
             ):
                 if i in indices:
                     add_child(formatted_name, val.iloc[:, i])
@@ -1146,7 +1146,7 @@ class NodeValue(object):
         if isinstance(val, Series):
             for i in _sample_indices(length, samples["pandas_rows"]):
                 try:
-                    k = val.index[i : i + 1].format(sparsify=False)[0]
+                    k = val.index[i : i + 1].format()[0]
                     v = val.iloc[i]
                 except:
                     pass
@@ -1223,7 +1223,7 @@ def _repr_series_one_line(x, helper):
     maxparts = _repr_series_one_line.maxparts
     for i in _sample_indices(n, maxparts):
         try:
-            k = x.index[i : i + 1].format(sparsify=False)[0]
+            k = x.index[i : i + 1].format()[0]
         except TypeError:
             k = x.index[i : i + 1].format()[0]
         v = x.iloc[i]
